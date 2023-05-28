@@ -58,12 +58,12 @@ const FileUpload = () => {
       return;
     }
 
-    const fileData = { title };
+    const filet = { title };
 
     try {
       const response = await fetch("/api/files", {
         method: "POST",
-        body: JSON.stringify(fileData),
+        body: JSON.stringify(filet),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${user.token}`,

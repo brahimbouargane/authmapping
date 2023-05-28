@@ -188,11 +188,17 @@ const Mapping = () => {
   const [modifiedColumnNames, setModifiedColumnNames] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [fileType, setFileType] = useState("");
+  const [file, setFile] = useState();
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState(null);
 
   // Handle file upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     setFileName(file.name);
+    setFileType(file.type);
+    setTitle(file.name);
     const reader = new FileReader();
 
     reader.onload = (e) => {
@@ -292,7 +298,70 @@ const Mapping = () => {
     setFilteredData([]);
     setSelectedList([]);
   };
-  const handleSaveChanges = () => {
+  // const handleSaveChanges = () => {
+  //   const updatedFileData = [...fileData];
+  //   const modifiedColumnIndexes = {};
+
+  //   modifiedColumnNames.forEach((name, index) => {
+  //     if (name !== "") {
+  //       modifiedColumnIndexes[index] = true;
+  //       updatedFileData[0][index] = name;
+  //     }
+  //   });
+
+  //   // Create an object to store the column changes
+  //   const columnChanges = {};
+
+  //   filteredData.forEach((name, index) => {
+  //     columnChanges[name] = modifiedColumnNames[index] || ""; // Use empty string if no modification is made
+  //   });
+
+  //   // Console log the column changes object
+  //   console.log("Column Changes:", columnChanges);
+
+  //   // Create the data object to send to the backend
+  //   const dataToSend = {
+  //     columnChange: filteredData.reduce((result, name, index) => {
+  //       result[name] = modifiedColumnNames[index];
+  //       return result;
+  //     }, {}),
+  //     fileName: fileName, // Replace with the actual file name
+  //     //dictioner
+  //     originalFile: fileData, // Replace with the actual original file data
+  //   };
+
+  //   console.log("Data to send to backend:", dataToSend);
+
+  //   // Send the POST request to the backend
+  //   fetch("/api/save", {
+  //     method: "POST",
+  //     body: JSON.stringify(dataToSend),
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //   })
+  //     .then((response) => response.json())
+  //     .then((data) => {
+  //       // Handle the response from the backend
+  //       console.log("Response from backend:", data);
+  //       // ...
+  //     })
+  //     .catch((error) => {
+  //       // Handle errors
+  //       console.error("Error:", error);
+  //       // ...
+  //     });
+
+  //   const fileInput = document.getElementById("fileInput");
+  //   fileInput.value = null;
+  //   setColumnNames([]);
+  //   setModifiedColumnNames([]);
+  //   setFileData([]);
+  //   setIsSaving(false);
+  //   resetState();
+  // };
+  const handleSaveChanges = async (e) => {
+    e.preventDefault();
     const updatedFileData = [...fileData];
     const modifiedColumnIndexes = {};
 
@@ -303,6 +372,32 @@ const Mapping = () => {
       }
     });
 
+    const filet = { title };
+
+    try {
+      const response = await fetch("/api/files", {
+        method: "POST",
+        body: JSON.stringify(filet),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error);
+      } else {
+        setTitle("");
+        setError(null);
+        dispatch({ type: "CREATE_FILE", payload: data });
+      }
+    } catch (error) {
+      setError("An error occurred while uploading the file.");
+      console.error(error);
+    }
+
     // Create an object to store the column changes
     const columnChanges = {};
 
@@ -310,9 +405,10 @@ const Mapping = () => {
       columnChanges[name] = modifiedColumnNames[index] || ""; // Use empty string if no modification is made
     });
 
-    // Console log the column changes object
-    console.log("Column Changes:", columnChanges);
+    const formData = new FormData();
+    formData.append("file", file);
 
+    console.log("Form Data to send to backend:", formData);
     // Create the data object to send to the backend
     const dataToSend = {
       columnChange: filteredData.reduce((result, name, index) => {
@@ -320,11 +416,33 @@ const Mapping = () => {
         return result;
       }, {}),
       fileName: fileName, // Replace with the actual file name
-      //dictioner
-      originalFile: fileData, // Replace with the actual original file data
+      fileType: fileType,
     };
 
     console.log("Data to send to backend:", dataToSend);
+
+    console.log(formData);
+    // send excel file
+    fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+      headers: {
+        "access-control-allow-origin": "*",
+        accept: "application/json",
+        "content-type": "multipart/form-data",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        // Handle the response from the backend
+        console.log("Response from file upload:", data);
+        // ...
+      })
+      .catch((error) => {
+        // Handle errors
+        console.error("Error:", error);
+        // ...
+      });
 
     // Send the POST request to the backend
     fetch("/api/save", {
@@ -346,8 +464,8 @@ const Mapping = () => {
         // ...
       });
 
-    const fileInput = document.getElementById("fileInput");
-    fileInput.value = null;
+    // const fileInput = document.getElementById("fileInput");
+    // fileInput.value = null;
     setColumnNames([]);
     setModifiedColumnNames([]);
     setFileData([]);
